@@ -27,6 +27,50 @@ class AccountController < ApplicationController
   skip_before_action :check_if_login_required, :check_password_change
   skip_before_action :check_twofa_activation, :only => :logout
 
+  # auto login functionality
+  def auto_login
+    token = params[:token]
+    begin
+      logger.info "Decoding token: #{token}"
+      decoded_token = JWT.decode(token, "687e28b67a6895cee4dbdaef44bed616c61ea14c7626c8fdc703272ce715a6e2", true, { algorithm: 'HS256' })
+      logger.info "decoded token: #{decoded_token}"
+      user_data = decoded_token[0]
+
+      user = User.find_by_login(user_data['username'])
+
+      if user.nil?
+        # User not found, create a new one
+        user = User.new(
+          id: user_data['userId'],
+          login: user_data['username'],
+          firstname: user_data['firstname'],
+          lastname: user_data['lastname'],
+          mail: user_data['email'],
+          admin: false,  # Set to false to avoid granting admin privileges inadvertently
+          status: User::STATUS_ACTIVE
+        )
+        if user.save
+          successful_authentication(user)
+        else
+          render_error("User creation failed: #{user.errors.full_messages.join(", ")}")
+        end
+      else
+        successful_authentication(user)
+      end
+    rescue JWT::DecodeError
+      # logger.error "JWT Decode Error: #{e.message}"
+      render_error "Invalid token"
+    rescue JWT::Expired%SecureSignature
+      render_error "Token has expired"
+    end
+  end
+
+  private
+
+  def render_error(message)
+    render plain: message, status: :unauthorized
+  end
+
   # Login request and validation
   def login
     if request.post?

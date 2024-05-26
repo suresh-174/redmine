@@ -16,6 +16,9 @@ gem 'addressable'
 gem 'rubyzip', '~> 2.3.0'
 gem 'propshaft', '~> 0.8.0'
 
+# AutoLogin Gem
+gem 'jwt'
+
 #  Ruby Standard Gems
 gem 'csv', '~> 3.2.8'
 gem 'net-imap', '~> 0.4.8'
